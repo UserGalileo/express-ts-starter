@@ -76,13 +76,13 @@ const withCsrf = csrf({
   }
 });
 
-const conditionalCsrf: RequestHandler = (req, res, next) => {
-  if (withAuth) {
-    return withCsrf(req, res, next);
+function noop(): RequestHandler {
+  return (req, res, next) => {
+    next();
   }
-  return next();
-}
-app.use(conditionalCsrf);
+};
+
+app.use(withAuth ? withCsrf : noop());
 
 /**
  * Hello World!
@@ -106,7 +106,7 @@ app.get("/", (req, res) => {
  * Initial request for a CSRF Token.
  * Must be called at the app start.
  */
- app.get('/csrf-token', conditionalCsrf, (req: Request, res: Response) => {
+ app.get('/csrf-token', withAuth ? withCsrf : noop(), (req: Request, res: Response) => {
   res.cookie('XSRF-TOKEN', req.csrfToken());
   res.json({});
 });
