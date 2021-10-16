@@ -7,9 +7,12 @@ import cookieParser from 'cookie-parser';
 import csrf from 'csurf';
 import { v4 as uuid } from 'uuid';
 import passport from 'passport';
-import { setupRoutes } from './src/routes/authentication';
 import { localStrategy } from './src/strategies';
 import { userStore } from './src/store';
+import { withAuth } from './src/commands';
+import { Request, Response } from 'express-serve-static-core';
+import { setupRoutes as setupAuthRoutes } from './src/routes/authentication';
+import { setupRoutes as setupFintechRoutes } from './src/routes/fintech';
 
 // Main configuration
 dotenv.config();
@@ -67,7 +70,7 @@ passport.deserializeUser((_id, done) => {
 });
 
 // CSRF protection
-const withCsrf = csrf({
+const withCsrf = !withAuth ? [] : csrf({
   cookie: {
     httpOnly: true
   }
@@ -84,15 +87,25 @@ app.get("/", (req, res) => {
 });
 
 /**
+ * Generic error.
+ */
+ app.get("/error", (req, res) => {
+  res.status(500).json({
+    message: 'An error has occurred.'
+  });
+});
+
+/**
  * Initial request for a CSRF Token.
  * Must be called at the app start.
  */
- app.get('/csrf-token', withCsrf, (req, res) => {
+ app.get('/csrf-token', withCsrf, (req: Request, res: Response) => {
   res.cookie('XSRF-TOKEN', req.csrfToken());
   res.json({});
 });
 
-setupRoutes(app, passport);
+setupAuthRoutes(app, passport);
+setupFintechRoutes(app, passport);
 
 try {
   app.listen(port, () => {

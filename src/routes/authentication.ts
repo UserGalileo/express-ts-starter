@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { Application } from 'express';
 import { PassportStatic } from 'passport';
+import { withAuth } from '../commands';
 import { authGuard } from '../guards/auth.guard';
 import { userStore } from '../store';
 
@@ -67,6 +68,12 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
    * Gets the user's info.
    */
   app.get("/me", authGuard, (req, res) => {
+    if (!withAuth) {
+      res.json({
+        email: 'mario@rossi.com',
+        displayName: 'Mario Rossi'
+      })
+    }
     res.json({
       email: req.user?.email,
       displayName: req.user?.displayName,
