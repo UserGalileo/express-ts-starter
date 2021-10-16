@@ -10,7 +10,7 @@ import passport from 'passport';
 import { localStrategy } from './src/strategies';
 import { userStore } from './src/store';
 import { withAuth } from './src/commands';
-import { Request, Response } from 'express-serve-static-core';
+import { Request, RequestHandler, Response } from 'express-serve-static-core';
 import { setupRoutes as setupAuthRoutes } from './src/routes/authentication';
 import { setupRoutes as setupFintechRoutes } from './src/routes/fintech';
 
@@ -70,12 +70,19 @@ passport.deserializeUser((_id, done) => {
 });
 
 // CSRF protection
-const withCsrf = !withAuth ? [] : csrf({
+const withCsrf = csrf({
   cookie: {
     httpOnly: true
   }
 });
-app.use(withCsrf);
+
+const conditionalCsrf: RequestHandler = (req, res, next) => {
+  if (withAuth) {
+    return withCsrf(req, res, next);
+  }
+  return next();
+}
+app.use(conditionalCsrf);
 
 /**
  * Hello World!
@@ -99,7 +106,7 @@ app.get("/", (req, res) => {
  * Initial request for a CSRF Token.
  * Must be called at the app start.
  */
- app.get('/csrf-token', withCsrf, (req: Request, res: Response) => {
+ app.get('/csrf-token', conditionalCsrf, (req: Request, res: Response) => {
   res.cookie('XSRF-TOKEN', req.csrfToken());
   res.json({});
 });
