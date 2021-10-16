@@ -20,6 +20,7 @@ const FileStore = sessionFileStore(session);
 const app = express();
 const port = process.env.PORT || 3000;
 const appSecret = process.env.APP_SECRET || 'supersecret';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
 
 // Passport Strategy name definitions
 passport.use("local", localStrategy);
@@ -34,7 +35,7 @@ app.use(cookieParser());
 // CORS configuration
 app.use(cors({
   credentials: true,
-  origin: '*',
+  origin: frontendUrl,
   optionsSuccessStatus: 200,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 }));
@@ -76,13 +77,10 @@ const withCsrf = csrf({
   }
 });
 
-function noop(): RequestHandler {
-  return (req, res, next) => {
-    next();
-  }
-};
+if (withAuth) {
+  app.use(withCsrf);
+}
 
-app.use(withAuth ? withCsrf : noop());
 
 /**
  * Hello World!
@@ -106,11 +104,13 @@ app.get("/", (req, res) => {
  * Initial request for a CSRF Token.
  * Must be called at the app start.
  */
- app.get('/csrf-token', withAuth ? withCsrf : noop(), (req: Request, res: Response) => {
-  res.cookie('XSRF-TOKEN', req.csrfToken());
-  res.json({});
-});
-
+if (withAuth) {
+  app.get('/csrf-token', withCsrf, (req: Request, res: Response) => {
+    res.cookie('XSRF-TOKEN', req.csrfToken());
+    res.json({});
+  });
+}
+ 
 setupAuthRoutes(app, passport);
 setupFintechRoutes(app, passport);
 

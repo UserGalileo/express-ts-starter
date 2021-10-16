@@ -69,7 +69,7 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
    */
   app.get("/me", authGuard, (req, res) => {
     if (!withAuth) {
-      res.json({
+      return res.json({
         email: 'mario@rossi.com',
         displayName: 'Mario Rossi'
       })

@@ -14,6 +14,15 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
   });
 
   app.post('/cards', authGuard, (req, res) => {
+
+    const { name, surname, type, number, csc } = req.body;
+    
+    if (!name || !surname || !type || !number || !csc) {
+      return res.status(400).json({
+        error: 'Body must include name, surname, type, number and csc.'
+      })
+    }
+
     cardStore.insert({
       ...req.body,
       owner: req.user?.displayName || 'Mario Rossi',
@@ -116,16 +125,30 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
 
   app.delete('/cards/:cardId', authGuard, (req, res) => {
     const _id = req.params.cardId;
+
+    if (!_id) {
+      return res.status(400).json({
+        error: 'URL must include the card ID, eg: /cards/g4159g5'
+      })
+    }  
+
     cardStore.remove({ _id }, (err, doc) => {
       res.json(!err);
     });
   })
 
   app.get('/cards/:cardId/movements', authGuard, (req, res) => {
+    const _id = req.params.cardId;
+    
+    if (!_id) {
+      return res.status(400).json({
+        error: 'URL must include the card ID, eg: /cards/g4159g5/movements'
+      })
+    }  
+
     const limit = req.query.limit ? +req.query.limit : 0;
     const offset = req.query.offset ? +req.query.offset : 0;
 
-    const _id = req.params.cardId;
 
     cardStore.findOne({ _id }, (err, doc) => {
       const movements = doc?.movements;
@@ -145,32 +168,57 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
   });
 
   app.post('/contacts', authGuard, (req, res) => {
-    contactStore.insert({ ...req.body, userId: req.user?._id }, (err, contact) => {
+    const { name, surname, iban } = req.body;
+    if (!name || !surname || !iban) {
+      return res.status(400).json({
+        error: 'Body must include name, surname and iban.'
+      })
+    }
+
+    const userId = req.user?._id || '1';
+
+    contactStore.insert({ ...req.body, userId }, (err, contact) => {
       res.json(contact);
     });
   });
 
-  app.put('/contacts/:contactId', authGuard, (req, res) => {    
-    contactStore.update({ _id: req.params.contactId }, { $set: req.body }, { multi: true }, (err, contact) => {
+  app.put('/contacts/:contactId', authGuard, (req, res) => {  
+    const _id = req.params.contactId;
+    if (!_id) {
+      return res.status(400).json({
+        error: 'URL must include the contact ID, eg: /contact/g4159g5'
+      })
+    }  
+    contactStore.update({ _id }, { $set: req.body }, { multi: true }, (err, contact) => {
       res.json(contact);
     })
   });
 
   app.delete('/contacts/:contactId', authGuard, (req, res) => {
     const _id = req.params.contactId;
+    if (!_id) {
+      return res.status(400).json({
+        error: 'URL must include the contact ID, eg: /contact/g4159g5'
+      })
+    }
     contactStore.remove({ _id }, (err, doc) => {
       res.json(!err);
     });
   });
 
   app.post('/transfer', authGuard, (req, res) => {
-    const transfer = req.body;
+    const { amount, name, surname, iban } = req.body;
+    if (!amount || !name || !surname || !iban) {
+      return res.status(400).json({
+        error: 'Body must include amount, name, surname and iban.'
+      })
+    }
     const movement = {
       _id: uuid(),
       type: 'out',
-      amount: transfer.amount,
-      title: 'Transfer to ' + transfer.name + ' ' + transfer.surname + ' [' + transfer.iban + ']',
-      description: 'This is the result of a Transfer operation to ' + transfer.name + ' ' + transfer.surname,
+      amount: amount,
+      title: 'Transfer to ' + name + ' ' + surname + ' [' + iban + ']',
+      description: 'This is the result of a Transfer operation to ' + name + ' ' + surname,
       timestamp: Date.now(),
     }
 
@@ -179,7 +227,6 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
     // Find card
     cardStore.findOne({ _id: cardId }, (err, doc) => {
       const movements = doc?.movements;
-      console.log(cardId);
       // Add movement
       cardStore.update({ _id: cardId }, { $set: { movements: [...movements, movement], amount: doc.amount - movement.amount } }, { multi: true }, (err, doc) => {
         res.json(!err);
@@ -214,6 +261,11 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
 
   app.get('/locations/:cardId', authGuard, (req, res) => {
     const cardId = req.params.cardId;
+    if (!cardId) {
+      return res.status(400).json({
+        error: 'URL must include the cardId, eg: /locations/g45t651'
+      })
+    }
     res.json([
       {
         _id: '1',
@@ -256,6 +308,11 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
   });
 
   app.post('/schedule', authGuard, (req, res) => {
+    if (!req.body.day || !req.body.slot) {
+      return res.status(400).json({
+        error: 'Body must include "day" and "slot".'
+      })
+    }
     res.json(true);
   })
 }
