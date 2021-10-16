@@ -1,11 +1,15 @@
 import dotenv from 'dotenv';
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
 import cookieParser from 'cookie-parser';
 import csrf from 'csurf';
 import { v4 as uuid } from 'uuid';
+import passport from 'passport';
+import { setupRoutes } from './src/routes/authentication';
+import { localStrategy } from './src/strategies';
+import { userStore } from './src/store';
 
 // Main configuration
 dotenv.config();
@@ -13,6 +17,9 @@ const FileStore = sessionFileStore(session);
 const app = express();
 const port = process.env.PORT || 3000;
 const appSecret = process.env.APP_SECRET || 'supersecret';
+
+// Passport Strategy name definitions
+passport.use("local", localStrategy);
 
 // Body parsing Middleware
 app.use(express.json());
@@ -45,6 +52,20 @@ app.use(
   })
 );
 
+// Passport setup
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser((_id, done) => {
+  userStore.findOne({ _id }, (err, user) => {
+    done(null, user);
+  })
+});
+
 // CSRF protection
 const withCsrf = csrf({
   cookie: {
@@ -56,9 +77,9 @@ app.use(withCsrf);
 /**
  * Hello World!
  */
-app.get("/", (req: Request, res: Response): Response => {
+app.get("/", (req, res) => {
   return res.status(200).send({
-  message: "Hello World!",
+    message: "Hello World!",
   });
 });
 
@@ -70,6 +91,8 @@ app.get("/", (req: Request, res: Response): Response => {
   res.cookie('XSRF-TOKEN', req.csrfToken());
   res.json({});
 });
+
+setupRoutes(app, passport);
 
 try {
   app.listen(port, () => {
