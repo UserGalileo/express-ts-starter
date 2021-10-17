@@ -39,10 +39,13 @@ Get started by running `npm run dev` (dev mode, hot reloading) or `npm start` (b
 
 ## How to authenticate
 
-1. As soon as the frontend starts, make a `GET` request for a _CSRF Token_ at `/csrf-token`.
-2. Grab the token from the `XSRF-TOKEN` Cookie: most frameworks do this automatically (eg. Angular).
-3. Register a new user at `/register`.
-4. Login at `/login`.
-5. Get the user's info at `/me`.
-6. Logout at `/logout`.
+0. Make sure to send requests with `withCredentials` set to `true`.
+1. As soon as the front-end starts, make a `GET` request for a _CSRF Token_ at `/csrf-token`.
+2. Grab the token from the `XSRF-TOKEN` Cookie.
+3. From now on, every state-changing request must include this token as a header named `X-XSRF-Token`.
+4. Register a new user at `/register`.
+5. Login at `/login`.
+6. Get the user's info at `/me`.
+7. Logout at `/logout`.
 
+_Note: Most front-end frameworks handle points 2-3 automatically (eg. Angular)_
