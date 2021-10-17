@@ -17,6 +17,7 @@ const FileStore = sessionFileStore(session);
 const app = express();
 const port = process.env.PORT || 3000;
 const appSecret = process.env.APP_SECRET || 'supersecret';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
 
 // Passport Strategy name definitions
 passport.use("local", localStrategy);
@@ -31,7 +32,7 @@ app.use(cookieParser());
 // CORS configuration
 app.use(cors({
   credentials: true,
-  origin: '*',
+  origin: frontendUrl,
   optionsSuccessStatus: 200,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 }));
@@ -80,6 +81,15 @@ app.use(withCsrf);
 app.get("/", (req, res) => {
   return res.status(200).send({
     message: "Hello World!",
+  });
+});
+
+/**
+ * Generic error.
+ */
+ app.get("/error", (req, res) => {
+  return res.status(500).json({
+    message: 'An error has occurred.'
   });
 });
 
