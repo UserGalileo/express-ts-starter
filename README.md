@@ -37,4 +37,12 @@ FRONTEND_URL=...
 
 Get started by running `npm run dev` (dev mode, hot reloading) or `npm start` (build).
 
+## How to authenticate
+
+1. As soon as the frontend starts, make a `GET` request for a _CSRF Token_ at `/csrf-token`.
+2. Grab the token from the `XSRF-TOKEN` Cookie: most frameworks do this automatically (eg. Angular).
+3. Register a new user at `/register`.
+4. Login at `/login`.
+5. Get the user's info at `/me`.
+6. Logout at `/logout`.
 
