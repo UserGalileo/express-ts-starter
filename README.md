@@ -1,4 +1,4 @@
-# Node starter w/ Authentication (Express, TypeScript)
+# Node starter w/ Authentication (Express, TypeScript, JWT)
 
 > A starter template for demo or instructional purposes.
 
@@ -9,17 +9,16 @@
 - CORS
 - Authentication
   - Registration
-  - Login
-  - CSRF Token
+  - Login with JWT
+  - Refresh Token
+  - Refresh Token Rotation
+  - Reuse Detection
 
 ## Main libraries
 
 - cors (for CORS)
-- csurf (for CSRF Protection)
-- express-session (for sessions)
-- session-file-store (for saving session information on disk)
-- passport, passport-local (for authentication)
 - NeDB (MongoDB alternative, saves on disk, no setup required)
+- jsonwebtoken
 
 ## Get started
 
@@ -29,23 +28,26 @@ Make sure to add a `.env` file at the root of the project, with these fields:
 PORT=...
 APP_SECRET=...
 FRONTEND_URL=...
+ACCESS_TOKEN_SECRET=...
+REFRESH_TOKEN_SECRET=...
+ACCESS_TOKEN_EXPIRATION=3600
+REFRESH_TOKEN_EXPIRATION=604800
 ```
 
 - `PORT` specifies on which port should Node start
-- `APP_SECRET` is a random secret value, used for sessions
+- `APP_SECRET` is a random secret value (not used for now)
 - `FRONTEND_URL` is the URL of your frontend, needed for CORS (`Access-Control-Allow-Credentials`)
+- `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_SECRET` are random secret values used for JWTs
+- `ACCESS_TOKEN_EXPIRATION` and `REFRESH_TOKEN_EXPIRATION` are the lifespans of the JWTs
 
 Get started by running `npm run dev` (dev mode, hot reloading) or `npm start` (build).
 
 ## How to authenticate
 
-0. Make sure to send requests with `withCredentials` set to `true`.
-1. As soon as the front-end starts, make a `GET` request for a _CSRF Token_ at `/csrf-token`.
-2. Grab the token from the `XSRF-TOKEN` Cookie.
-3. From now on, every state-changing request must include this token as a header named `X-XSRF-Token`.
-4. Register a new user at `/register`.
-5. Login at `/login`.
-6. Get the user's info at `/me`.
-7. Logout at `/logout`.
+1. Register a new user at `/register`.
+2. Login at `/login`. You'll get an `access_token` and a `refresh_token`.
+3. When the `access_token` expires (HTTP error `401`), send the `refresh_token` to the `/token` endpoint to get a new pair of tokens. The previous `refresh_token` is invalidated and cannot be sent again.
+4. Get the user's info at `/me`.
+5. Logout at `/logout`. You can send a `refresh_token` and the server will delete it and all of its family.
 
-_Note: Most front-end frameworks handle points 2-3 automatically (eg. Angular)_
+_Note: This server implements Refresh Token Rotation (issues a new RT at every refresh) and Reuse Detection (if one attempts to use an invalid RT, all of the RTs gets deleted and the user is logged out)._

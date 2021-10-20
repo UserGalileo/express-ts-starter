@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import passport from 'passport';
 import { setupRoutes } from './src/routes/authentication';
 import { frontendUrl, port } from './src/globals';
 
@@ -43,7 +42,7 @@ app.get("/", (req, res) => {
   });
 });
 
-setupRoutes(app, passport);
+setupRoutes(app);
 
 try {
   app.listen(port, () => {

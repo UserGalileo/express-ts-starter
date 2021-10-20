@@ -1,6 +1,5 @@
 import bcrypt from 'bcrypt';
 import { Application } from 'express';
-import { PassportStatic } from 'passport';
 import { authGuard } from '../guards/auth.guard';
 import { userStore, refreshTokenStore } from '../store';
 import jwt from 'jsonwebtoken';
@@ -10,7 +9,7 @@ const refreshTokenExpiration = process.env.REFRESH_TOKEN_EXPIRATION || 604800;
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET || 'THEDOGISONTHETABLE';
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || 'THEDOGISONTHETABLE2';
 
-export function setupRoutes(app: Application, passport: PassportStatic) {
+export function setupRoutes(app: Application) {
 
   app.post('/register', (req, res) => {
     const { email, password, name, surname } = req.body;
