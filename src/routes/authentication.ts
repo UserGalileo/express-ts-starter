@@ -94,11 +94,12 @@ export function setupRoutes(app: Application) {
 
   app.get("/logout", authGuard, (req, res) => {
     const refreshToken = req.body.refresh_token;
+    const userId = req.user?._id;
 
     // If a Refresh Token is supplied, remove it and all of its family.
     if (refreshToken) {
-      refreshTokenStore.remove({ token: refreshToken });
-      refreshTokenStore.remove({ genesisToken: refreshToken });
+      refreshTokenStore.remove({ token: refreshToken, userId });
+      refreshTokenStore.remove({ genesisToken: refreshToken, userId });
     }
     res.json({
       message: 'Logged out. Throw away your tokens!'
