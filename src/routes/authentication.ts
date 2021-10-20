@@ -3,6 +3,7 @@ import { Application } from 'express';
 import { authGuard } from '../guards/auth.guard';
 import { userStore, refreshTokenStore } from '../store';
 import jwt from 'jsonwebtoken';
+import { v4 as uuid } from 'uuid';
 
 const accessTokenExpiration = process.env.ACCESS_TOKEN_EXPIRATION || 3600;
 const refreshTokenExpiration = process.env.REFRESH_TOKEN_EXPIRATION || 604800;
@@ -75,10 +76,12 @@ export function setupRoutes(app: Application) {
           displayName: user.displayName,
         }, accessTokenSecret, {
           expiresIn: accessTokenExpiration,
+          jwtid: uuid()
         });
 
         const refreshToken = jwt.sign({}, refreshTokenSecret, {
           expiresIn: refreshTokenExpiration,
+          jwtid: uuid()
         });
 
         refreshTokenStore.insert({ userId: user._id, token: refreshToken });
@@ -121,7 +124,10 @@ export function setupRoutes(app: Application) {
 
     jwt.verify(refresh_token as string, refreshTokenSecret, (err, _) => {
       // This Refresh Token has expired.
+      // Let's clean up the database just in case.
       if (err) {
+        refreshTokenStore.remove({ token: refresh_token });
+
         return res.status(403).json({
           message: 'Invalid refresh_token.'
         })
@@ -130,13 +136,14 @@ export function setupRoutes(app: Application) {
 
     refreshTokenStore.findOne({ token: refresh_token }, (err, rt) => {
 
-      // Reuse Detection: invalid token. Invalidate all of its family.
+      // Reuse Detection: invalid token. Delete all of its family.
       if (rt.invalid) {
-        refreshTokenStore.update({ genesisToken: rt.genesisToken || rt.token }, { $set: { invalid: true } }, { multi: true });
+        refreshTokenStore.remove({ genesisToken: rt.genesisToken || rt.token });
+        refreshTokenStore.remove({ token: rt.token });
 
         return res.status(403).json({
           message: 'Reuse detected, you must re-authenticate.'
-        })
+        });
       }
 
       // Invalid refresh token (generic).
@@ -149,7 +156,10 @@ export function setupRoutes(app: Application) {
       userStore.findOne({ _id: rt.userId }, (err, user) => {
 
         // The refresh token doesn't belong to any user: maybe the user has been deleted.
+        // Let's clean up the database just in case.
         if (err || !user) {
+          refreshTokenStore.remove({ token: rt.token });
+
           return res.status(403).json({
             message: 'Invalid refresh_token.'
           });
@@ -161,11 +171,13 @@ export function setupRoutes(app: Application) {
           displayName: user.displayName,
         }, accessTokenSecret, {
           expiresIn: accessTokenExpiration,
-          subject: user._id
+          subject: user._id,
+          jwtid: uuid()
         });
 
         const refreshToken = jwt.sign({}, refreshTokenSecret, {
           expiresIn: refreshTokenExpiration,
+          jwtid: uuid()
         });
 
         // Invalidate the previous token.
