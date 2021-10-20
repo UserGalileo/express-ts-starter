@@ -1,13 +1,41 @@
 import { RequestHandler } from "express";
+import jwt from 'jsonwebtoken';
+import { accessTokenSecret } from "../globals";
+import { userStore } from "../store";
 
 /**
  * Ensures the user is authenticated.
  */
  export const authGuard: RequestHandler = (req, res, next) => {
-  if (req.user) {
-    return next(null);
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      message: 'Missing access token.'
+    });
   }
-  res.status(401).json({
-    message: 'Not authenticated.'
+
+  // Header: "Bearer [access_token]"
+  const accessToken = authHeader.split(' ')[1];
+
+  jwt.verify(accessToken, accessTokenSecret, (err, payload) => {
+    // This Access Token has been tampered with or it's expired.
+    if (err) {
+      return res.status(401).json({
+        message: 'Invalid access token.'
+      });
+    }
+
+    userStore.findOne({ email: payload?.sub }, (err, user) => {
+      // This Access Token doesn't belong to any user, maybe it's been deleted.
+      if (!user || err) {
+        return res.status(401).json({
+          error: 'Invalid access token.'
+        });
+      }
+      // Successful authentication!
+      req.user = user;
+      next();
+    })
   });
 }
