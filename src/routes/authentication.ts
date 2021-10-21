@@ -98,7 +98,7 @@ export function setupRoutes(app: Application) {
 
   app.post("/logout", authGuard, (req, res) => {
     const refreshToken = req.body.refresh_token;
-    const userId = req.user?._id;
+    const userId = req.userId;
 
     // If a Refresh Token is supplied, remove it and all of its family.
     if (refreshToken) {
@@ -200,9 +200,18 @@ export function setupRoutes(app: Application) {
    * Gets the user's info.
    */
   app.get("/me", authGuard, (req, res) => {
-    res.json({
-      email: req.user?.email,
-      displayName: req.user?.displayName,
-    });
+
+    userStore.findOne({ _id: req.userId }, (err, user) => {
+      if (!user || err) {
+        return res.status(401).json({
+          error: 'User not found.'
+        });
+      }
+
+      return res.json({
+        email: user?.email,
+        displayName: user?.displayName,
+      });
+    })
   });
 }

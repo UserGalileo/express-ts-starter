@@ -1,7 +1,6 @@
 import { RequestHandler } from "express";
 import jwt from 'jsonwebtoken';
 import { accessTokenSecret } from "../globals";
-import { userStore } from "../store";
 
 /**
  * Ensures the user is authenticated.
@@ -26,16 +25,8 @@ import { userStore } from "../store";
       });
     }
 
-    userStore.findOne({ _id: payload?.sub }, (err, user) => {
-      // This Access Token doesn't belong to any user, maybe it's been deleted.
-      if (!user || err) {
-        return res.status(401).json({
-          error: 'Invalid access token.'
-        });
-      }
-      // Successful authentication!
-      req.user = user;
-      next();
-    })
+    // Successful authentication!
+    req.userId = payload?.sub;
+    next();
   });
 }

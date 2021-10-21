@@ -1,15 +1,15 @@
-import { User as IUser } from '../../src/models/user';
+import Express from 'express';
 
 declare global {
   namespace Express {
     interface User extends IUser {}
 
     interface Request {
-      user?: IUser;
+      userId?: string;
       logout: () => void;
     }
     interface Response {
-      user?: IUser;
+      userId?: string;
     }
   }
 }
