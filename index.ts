@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -6,7 +5,6 @@ import { setupRoutes } from './src/routes/authentication';
 import { frontendUrl, port } from './src/globals';
 
 // Main configuration
-dotenv.config();
 const app = express();
 
 // Body parsing Middleware

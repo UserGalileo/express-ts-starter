@@ -76,6 +76,7 @@ export function setupRoutes(app: Application) {
           displayName: user.displayName,
         }, accessTokenSecret, {
           expiresIn: accessTokenExpiration,
+          subject: user._id,
           jwtid: uuid()
         });
 
@@ -95,7 +96,7 @@ export function setupRoutes(app: Application) {
     })
   });
 
-  app.get("/logout", authGuard, (req, res) => {
+  app.post("/logout", authGuard, (req, res) => {
     const refreshToken = req.body.refresh_token;
     const userId = req.user?._id;
 

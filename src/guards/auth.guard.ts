@@ -26,7 +26,7 @@ import { userStore } from "../store";
       });
     }
 
-    userStore.findOne({ email: payload?.sub }, (err, user) => {
+    userStore.findOne({ _id: payload?.sub }, (err, user) => {
       // This Access Token doesn't belong to any user, maybe it's been deleted.
       if (!user || err) {
         return res.status(401).json({

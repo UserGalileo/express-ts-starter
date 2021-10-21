@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 export const accessTokenExpiration = process.env.ACCESS_TOKEN_EXPIRATION || 3600;
 export const refreshTokenExpiration = process.env.REFRESH_TOKEN_EXPIRATION || 604800;
 export const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET || 'THEDOGISONTHETABLE';
