@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { Application } from 'express';
 import { authGuard } from '../guards/auth.guard';
-import { userStore, refreshTokenStore } from '../store';
+import { userStore, blacklistedTokenFamilyStore as blacklist, usedTokensStore } from '../store';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 
@@ -80,12 +80,15 @@ export function setupRoutes(app: Application) {
           jwtid: uuid()
         });
 
-        const refreshToken = jwt.sign({}, refreshTokenSecret, {
+        const refreshToken = jwt.sign({
+          familyId: uuid()
+        }, refreshTokenSecret, {
           expiresIn: refreshTokenExpiration,
+          subject: user._id,
           jwtid: uuid()
         });
 
-        refreshTokenStore.insert({ userId: user._id, token: refreshToken });
+        // refreshTokenStore.insert({ userId: user._id, token: refreshToken });
 
         return res.status(200).json({
           message: 'Successful authentication.',
@@ -98,12 +101,19 @@ export function setupRoutes(app: Application) {
 
   app.post("/logout", authGuard, (req, res) => {
     const refreshToken = req.body.refresh_token;
-    const userId = req.userId;
 
-    // If a Refresh Token is supplied, remove it and all of its family.
+    // If a Refresh Token is supplied, blacklist all of its family.
     if (refreshToken) {
-      refreshTokenStore.remove({ token: refreshToken, userId });
-      refreshTokenStore.remove({ genesisToken: refreshToken, userId });
+      jwt.verify(refreshToken as string, refreshTokenSecret, (err, payload) => {
+        if (payload) {
+          const currentTimestamp = Math.floor(new Date().getTime() / 1000);
+
+          blacklist.insert({
+            blacklistedAt: currentTimestamp,
+            familyId: payload.familyId
+          });
+        }
+      });
     }
     res.json({
       message: 'Logged out. Throw away your tokens!'
@@ -112,85 +122,80 @@ export function setupRoutes(app: Application) {
 
   /**
    * Exhange a Refresh Token for a new token pair.
+   * Implements Refresh Token Rotation and Reuse Strategy.
    */
   app.post('/token', (req, res) => {
-    const { refresh_token } = req.body;
+    const { refresh_token: oldRefreshToken } = req.body;
 
     // Token not provided.
-    if (!refresh_token) {
+    if (!oldRefreshToken) {
       return res.status(401).json({
         message: 'You must provide a refresh_token.'
       });
     }
 
-    jwt.verify(refresh_token as string, refreshTokenSecret, (err, _) => {
-      // This Refresh Token has expired.
-      // Let's clean up the database just in case.
+    jwt.verify(oldRefreshToken as string, refreshTokenSecret, (err, payload) => {
+      // This Refresh Token has expired or it's been tampered with.
       if (err) {
-        refreshTokenStore.remove({ token: refresh_token });
-
-        return res.status(403).json({
-          message: 'Invalid refresh_token.'
-        })
-      }
-    })
-
-    refreshTokenStore.findOne({ token: refresh_token }, (err, rt) => {
-
-      // Reuse Detection: invalid token. Delete all of its family.
-      if (rt.invalid) {
-        refreshTokenStore.remove({ genesisToken: rt.genesisToken || rt.token });
-        refreshTokenStore.remove({ token: rt.token });
-
-        return res.status(403).json({
-          message: 'Reuse detected, you must re-authenticate.'
-        });
-      }
-
-      // Invalid refresh token (generic).
-      if (err || !rt) {
         return res.status(403).json({
           message: 'Invalid refresh_token.'
         });
       }
 
-      userStore.findOne({ _id: rt.userId }, (err, user) => {
+      const currentTimestamp = Math.floor(new Date().getTime() / 1000);
 
-        // The refresh token doesn't belong to any user: maybe the user has been deleted.
-        // Let's clean up the database just in case.
-        if (err || !user) {
-          refreshTokenStore.remove({ token: rt.token });
+      blacklist.findOne({ familyId: payload?.familyId }, (_, blacklistedFamily) => {
+        usedTokensStore.findOne({ token: oldRefreshToken }, (_, usedToken) => {
 
-          return res.status(403).json({
-            message: 'Invalid refresh_token.'
+          // Reuse Detection
+          if (usedToken) {
+            // Blacklist all of this token's family
+            blacklist.insert({
+              blacklistedAt: currentTimestamp,
+              familyId: payload?.familyId
+            });
+
+            return res.status(403).json({
+              message: 'Reuse detected, you must re-authenticate.'
+            });
+          }
+
+          // Token was blacklisted
+          if (blacklistedFamily) {
+            return res.status(403).json({
+              message: 'Invalid refresh_token.'
+            });
+          }
+
+          // Valid refresh token: nothing happened!
+          const accessToken = jwt.sign({
+            email: payload?.email,
+            displayName: payload?.displayName,
+          }, accessTokenSecret, {
+            expiresIn: accessTokenExpiration,
+            subject: payload?.sub,
+            jwtid: uuid()
           });
-        }
-
-        // Generate new tokens
-        const accessToken = jwt.sign({
-          email: user.email,
-          displayName: user.displayName,
-        }, accessTokenSecret, {
-          expiresIn: accessTokenExpiration,
-          subject: user._id,
-          jwtid: uuid()
-        });
-
-        const refreshToken = jwt.sign({}, refreshTokenSecret, {
-          expiresIn: refreshTokenExpiration,
-          jwtid: uuid()
-        });
-
-        // Invalidate the previous token.
-        refreshTokenStore.update({ token: refresh_token }, { $set: { invalid: true } }, { multi: true });
-
-        // Insert a new Refresh Token. The genesis is either the previous genesis, or the previous token itself.
-        refreshTokenStore.insert({ userId: user._id, token: refreshToken, genesisToken: rt.genesisToken || rt.token });
-
-        return res.status(200).json({
-          message: 'Tokens refreshed. Throw away the previous ones.',
-          access_token: accessToken,
-          refresh_token: refreshToken
+    
+          const refreshToken = jwt.sign({
+            familyId: payload?.familyId
+          }, refreshTokenSecret, {
+            expiresIn: refreshTokenExpiration,
+            subject: payload?.sub,
+            jwtid: uuid()
+          });
+    
+          usedTokensStore.insert({
+            token: oldRefreshToken,
+            familyId: payload?.familyId,
+            usedAt: currentTimestamp
+          });
+    
+          return res.status(200).json({
+            message: 'Tokens refreshed. Throw away the previous ones.',
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
         })
       })
     })
