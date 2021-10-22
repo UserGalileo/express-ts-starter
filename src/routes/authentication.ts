@@ -122,7 +122,7 @@ export function setupRoutes(app: Application) {
 
   /**
    * Exhange a Refresh Token for a new token pair.
-   * Implements Refresh Token Rotation and Reuse Strategy.
+   * Implements Refresh Token Rotation and Reuse Detection.
    */
   app.post('/token', (req, res) => {
     const { refresh_token: oldRefreshToken } = req.body;
