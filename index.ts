@@ -96,7 +96,7 @@ app.get("/", (req, res) => {
  */
  app.get("/error", (req, res) => {
   res.status(500).json({
-    message: 'An error has occurred.'
+    message: 'C\'è stato un errore.'
   });
 });
 

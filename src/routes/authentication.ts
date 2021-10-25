@@ -13,14 +13,14 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
     if (!email || !password || !name || !surname) {
       // Incomplete request
       return res.status(400).json({
-        error: 'You must provide email, username and password.'
+        error: 'Sono richiesti email, username e password.'
       });
     }
     userStore.findOne({ email }, (err, user) => {
       // Already registered
       if (user) {
         return res.status(400).json({
-          error: 'This user already exists.'
+          error: 'Questo utente è già registrato.'
         });
       }
       bcrypt.hash(password, 10, (err, hash) => {
@@ -36,7 +36,7 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
           }
           // Success
           res.json({
-            message: 'Successful registration.'
+            message: 'Registrazione avvenuta con successo.'
           });
         })
       });
@@ -50,7 +50,7 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
     // If this function gets called, authentication was successful.
     // `req.user` contains the authenticated user.
     res.json({
-      message: 'Successful login.'
+      message: 'Login avvenuto con successo.'
     })
   });
 
@@ -60,7 +60,7 @@ export function setupRoutes(app: Application, passport: PassportStatic) {
   app.get("/logout", authGuard, (req, res) => {
     req.logout();
     res.json({
-      message: 'Logged out.'
+      message: 'Disconnesso con successo.'
     });
   });
 

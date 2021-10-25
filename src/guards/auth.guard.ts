@@ -12,6 +12,6 @@ import { withAuth } from "../commands";
     return next(null);
   }
   res.status(401).json({
-    message: 'Not authenticated.'
+    message: 'Non autenticato.'
   });
 }
